@@ -1,6 +1,5 @@
 # Packages ----------------------------------------------------------------
 
-
 library(tidyverse)
 library(MuMIn)
 library(caret)
@@ -117,16 +116,223 @@ caret::postResample(pred = test$Pred, obs = test$mpg)
 
 # Por otro lado, maximizar el poder explicativo va de la mano con poder responder a las preguntas basadas en las relaciones causales de fenómenos. A diferencia de lo que ocurre en el caso anterior, el maximizar el poder explicativo va acompañado de una interpretación sólida de los resultados.
 
+# ¿Debemos escogar explicación o predicción? Usualmente uno quiere mazimizar ambos poderes y para eso se emplean los criterios de información como AIC (Criterio de Información de Akaike), AICc o BIC (Criterio de Información Bayessiano.
+
+# AIC = 2k - ln(L), donde k: número de parámetros y ln(L): log Likelihood. 
+
+# El likelihood se refiere al R2, es decir, al ajuste del modelo  el cual va a ir aumentando siempre en la medida que se incorporan más parámetros al modelo. De la forma en la que está dispuesta la ecuación AIC esta tiende a premiar el ajuste pero castigar conforme el número de parámetros que se presente en el modelo. De esta manera, valores cada vez menores indican que el modelo presenta mayor parsimonía y existe una combinación más adecuada entre predicción y explicación. Por sí solos estos criterios de información no indican mucho excepto de manera comparativa.
+
+AIC(modelo)
+
+# AICc = AIC + (2k^2 + 2k)/(n - k -1), donde n: numero de observaciones.
+
+# El AICc (Criterio de Información de Akaike Corregido) permite corregir el AIC obtenido anteriormente por el número de observaciones. Producto de que agrega un cuociente en donde k (n° parámetros) se encuentra al cuadrado, el AICc castiga mucho más severamente aquellos modelos que presentan un alto número de parámetros en comparación a AIC. Para hacer modelos más complejos necesito más puntos (observaciones) por lo que AICc castiga mucho menos a aquellos modelos que presenten una mayor cantidad de observaciones. Usualmente se recomienda emplear el AICc cuando el número de observaciones es bajo. De todos modos, cuando el número de observaciones es muy alto el cuociente tiende a 0 por lo que el IC estaría conformado únicamente por el AIC. De esta manera, siempre es mejor emplear AICc que AIC.
+
+MuMIn::AICc(modelo)
+
+# A diferencia del R2, el cual sigue aumentando al ir incorporando más parámetros, el AIC y los demás IC tienden a experimentar un mínimo muy marcado para luego ir incrementando su valor a medida que se incorporan variables. De esta manera, basar la selección de modelo según los criterios de información es mucho más robusto que hacerlo en base al R2.
+
+# El BIC o Criterio de Información Bayessiano se emplea en experimentos de laboratorio muy controladas donde se tiene seguridad que las variables del estudio son las únicas que están afectando la variable dependiente. A diferencia del BIC, el AIC y AICc se emplean cuando las variables que se están evaluando no son las únicas existentes (se emplean más en los campos de ecología y recursos naturales.)
 
 
+# Ejercicio ---------------------------------------------------------------
+
+# Tomando la base de datos mtcars explora la relación entre AICc, R2 explicativo y R2 predictivo, para eso genera un df con las siguientes columnas
 
 
+# Solución 1 --------------------------------------------------------------
+
+set.seed(2018)
+
+index <- sample(x = 1:nrow(mtcars),
+                size = round(nrow(mtcars) / 2))
+
+train <- mtcars[index, ]
+test <- mtcars[-index, ]
+
+# Modelo 1
+{
+# Se genera un tibble vacío que posteriormente se va a ir completando y llenando con los resultados obtenidos
+
+df <- tibble(Formula = NA,
+             Model = NA,
+             K = NA,
+             R2_Train = NA,
+             R2_Test = NA, 
+             AICc = NA)
+
+# Como identificador vamos a ir agregando la ecuación misma del modelo 
+
+df$Formula <- "mpg ~ hp + wt"
+
+# Tibble es un formato moderno de data frame que, a diferencia de este último, te permite guardar en sus celdas un objeto de modelo
+
+df$Model <- lm(formula = as.formula(df$Formula),
+               data = train) %>% list()
+
+# El tener acceso al modelo dentro del objeto data frame (como una lista) nos permite acceder fácilmente a las métricas de interés
+
+df$R2_Train <- df$Model[[1]] %>% 
+  glance() %>% 
+  pull(r.squared)
+
+# El número de parámetros (K) es, en este caso, igual a los degrees of freedom
+
+df$K <- df$Model[[1]] %>% 
+  glance() %>% 
+  pull(df)
+
+# AICc
+
+df$AICc <- df$Model[[1]] %>% 
+  MuMIn::AICc()
+
+# R2 predictivo
+
+df$R2_Test <- postResample(
+  pred = predict(object = df$Model[[1]], 
+                 newdata = test), 
+  obs = test$mpg
+  )[2]
+}
+
+# Modelo 2
+{
+df2 <- tibble(Formula = NA,
+              Model = NA,
+              K = NA,
+              R2_Train = NA,
+              R2_Test = NA, 
+              AICc = NA)
+
+df2$Formula <- "mpg ~ wt"
+
+df2$Model <- lm(formula = as.formula(df2$Formula),
+               data = train) %>% list()
+
+df2$R2_Train <- df2$Model[[1]] %>% 
+  glance() %>% 
+  pull(r.squared)
 
 
+df2$K <- df2$Model[[1]] %>% 
+  glance() %>% 
+  pull(df)
+
+df2$AICc <- df2$Model[[1]] %>% 
+  MuMIn::AICc()
+
+df2$R2_Test <- postResample(
+  pred = predict(object = df2$Model[[1]], 
+                 newdata = test), 
+  obs = test$mpg
+)[2]
+}
+
+# Unión de los tibble
+df_t <- df %>% bind_rows(df2)
 
 
+# Solución 2 --------------------------------------------------------------
+
+# Generamos el tibble con 4 filas
+
+df <- tibble(Formula = rep(NA, 4),
+             Model = rep(NA, 4),
+             K = rep(NA, 4),
+             R2_Train = rep(NA, 4),
+             R2_Test = rep(NA, 4),
+             AICc = rep(NA, 4))
+
+# Guardamos el modelo como texto para usarlo despues
+
+df$Formula <- c("mpg ~ hp + wt",
+                "mpg ~ hp + disp",
+                "mpg ~ wt + disp",
+                "mpg ~ wt")
+
+# Obtenemos las métricas mediante un loop
+
+for (i in 1:nrow(df)) {
+  df$Model[i] <- list(lm(as.formula(df$Formula[i]),
+                         data = train))
+  
+  df$R2_Train[i] <- df$Model[i][[1]] %>% glance() %>% pull(r.squared)
+  
+  df$K[i] <- df$Model[i][[1]] %>% glance() %>% pull(df)
+  
+  df$AICc[i] <- df$Model[i][[1]] %>% AICc()
+  
+  df$R2_Test[i] <- postResample(pred = predict(df$Model[i][[1]], test),
+                                obs = test$mpg)
+}
 
 
+# Solución 3 --------------------------------------------------------------
 
+Data <- list()
 
+for (i in c(1:12)) {
+  Data[[i]] <-
+    tibble(
+      Formula = purrr::map(as.data.frame(combn(
+        c(
+          "cyl",
+          "disp",
+          "hp",
+          "drat",
+          "wt",
+          "qsec",
+          "vs",
+          "am",
+          "gear",
+          "carb",
+          "I(wt^2)",
+          "I(hp^2)"
+        ),
+        i
+      )), ~ paste(.x, collapse = "+")) %>%
+        reduce(c),
+      Model = purrr::map(as.data.frame(combn(
+        c(
+          "cyl",
+          "disp",
+          "hp",
+          "drat",
+          "wt",
+          "qsec",
+          "vs",
+          "am",
+          "gear",
+          "carb",
+          "I(wt^2)",
+          "I(hp^2)"
+        ),
+        i
+      )), ~ paste(.x, collapse = "+")) %>%
+        purrr::map( ~ paste("mpg ~", .x)) %>%
+        purrr::map(as.formula) %>%
+        purrr::map( ~ lm(.x, data = train)),
+      K = i + 1
+    )
+}
 
+Data <- bind_rows(Data)
+
+Data$R_2_Train <- NA
+
+Data$R_2_Test <- NA
+
+Data$AICc <- NA
+
+for (i in 1:nrow(Data)) {
+  Data$R_2_Train[i] <- R2(pred = predict(Data$Model[i][[1]], 
+                                         train), obs = train$mpg)
+  Data$R_2_Test[i] <- R2(pred = predict(Data$Model[i][[1]], 
+                                        test), obs = test$mpg)
+  Data$AICc[i] <- AICc(Data$Model[i][[1]])
+}
+
+Data <- Data %>% dplyr::select(-Model) %>% arrange(AICc)
+
+# Multicolinearidad. Hace referencia a las correlaciones que existen entre las variables
