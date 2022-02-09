@@ -29,12 +29,13 @@ df <- info %>%
   mutate(Horario = as.character(Horario),
          Mes = "Mayo")
 
+theme_set(new = theme_bw())
+
 ggplot(data = df, aes(x = Dia, y = Semana)) +
   geom_tile(aes(fill = Horario)) + 
   geom_text(aes(label = Date)) +
   # Invertir la escala del eje y
   scale_y_reverse() +
   facet_grid(~Mes) +
-  theme_bw() + 
   labs(x = "",
        y = "")
