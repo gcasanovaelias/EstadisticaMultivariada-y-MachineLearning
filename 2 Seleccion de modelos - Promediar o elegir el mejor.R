@@ -14,6 +14,8 @@ library(tidyverse)
 
 # La parsimonía se refiere a la capacidad de los modelos de explicar bien la variabilidad observada sin la necesidad de ser excesivamente complejo en cuanto al número de variables. Es un balance entre sencillez y una buena explicación para un modelo.
 
+# Bibliografía recomendada: "Model Selection and Multi-Model Inference" de Anderson & Burnham (2004)
+
 # Modelamiento ------------------------------------------------------------
 
 # IMPORTANTE: Esto tambien se encuentra cubierto en el script "4 Modelos" de la clase de "Análisis y Manipulación de datos".
