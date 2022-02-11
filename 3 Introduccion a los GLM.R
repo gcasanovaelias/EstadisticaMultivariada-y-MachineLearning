@@ -4,6 +4,8 @@ library(MuMIn)
 library(broom)
 library(tidyverse)
 
+library(renv)
+
 
 # Modelos lineales con interacciones y modificadores ----------------------------
 
