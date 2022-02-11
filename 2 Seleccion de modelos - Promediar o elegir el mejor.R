@@ -16,6 +16,8 @@ library(tidyverse)
 
 # Bibliografía recomendada: "Model Selection and Multi-Model Inference" de Anderson & Burnham (2004)
 
+# https://derek-corcoran-barrios.github.io/
+
 # Modelamiento ------------------------------------------------------------
 
 # IMPORTANTE: Esto tambien se encuentra cubierto en el script "4 Modelos" de la clase de "Análisis y Manipulación de datos".
