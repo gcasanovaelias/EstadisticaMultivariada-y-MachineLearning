@@ -55,10 +55,18 @@ broom::glance(modelo) # glance(): accepts a model object and returns a tibble wi
 
 broom::tidy(modelo) # tidy(): summarises information about components of a model (similar to summary())
 
+broom::augment(modelo) # augment(): accepts a dataset and adds information about each observation
+
 # Un R2 de 0.82 significa que el 82% de la variabilidad es debido al modelo (el 18% restante es del error) por lo que esto correspondería al poder explicativo
 
-train$Pred <- predict(object = modelo, newdata = train) # Creamos una nueva columna con los valores predichos en lla misma base de datos con la que armamos el modelo
+# Creamos una nueva columna con los valores predichos en la misma base de datos con la que armamos el modelo
+# train$Pred <- predict(object = modelo, newdata = train) 
 
+# Los datos que se le entregan a la función augment() pueden estar asociados a aquellos con los que se construyó el modelo (entregados por default) o un nuevo set de datos señalados con el argumento "newdata". A partir de esta modificación, la información agregada acerca de cada observación se limita a .fitted y .resid, pudiendo agregar intervalos y .se.fit si se desea.
+
+# En este caso, como los datos con los que fue construido el modelo corresponden a train, no es necesario indicarle un newdata con los datos de entrenamiento. Esto permite que la información agregada por augment sea mayor (.hat, .sigma, .cooksd y .std.resid)
+
+train_augment <- broom::augment(x = modelo, se_fit = T, interval = "confidence")
 
 # Poder predictivo --------------------------------------------------------
 
@@ -66,32 +74,30 @@ train$Pred <- predict(object = modelo, newdata = train) # Creamos una nueva colu
 
 # Hacemos una predicción del modelo en una nueva base de datos
 
-test$Pred <- predict(object = modelo, newdata = test) # Creamos una nueva columna con los valores predichos
+# Creamos una nueva columna con los valores predichos
+# test$Pred <- predict(object = modelo, newdata = test)
 
-ggplot(data = test, aes(x = hp, y = mpg)) +
+test_augment <- broom::augment(x = modelo, newdata = test, se_fit = T, interval = "prediction")
+
+ggplot(data = test_augment, aes(x = hp, y = mpg)) +
   # Los puntos son los valores de mpg observados
   geom_point() +
   # La línea es la predicción de mpg según el modelo
-  geom_line(aes(y = Pred)) +
+  geom_line(aes(y = .fitted)) +
   theme_minimal()
-
-test <- test %>%
-  # Creamos una nueva columna con los residuos (diferencia entre obs y predichos)
-  mutate(resid = mpg - Pred) %>%
-  select(hp, mpg, Pred, resid)
 
 
 # Poder predictivo vs explicativo -----------------------------------------
 
 # caret: Paquete que permite calcular el R2 y otras medidas con los valores observados y los predichos para...
 
-# ..o el explicativo
+# ... el explicativo
 
-caret::postResample(pred = train$Pred, obs = train$mpg)
+caret::postResample(pred = train_augment$.fitted, obs = train_augment$mpg)
 
-# ...el poder predictivo
+# ...o el poder predictivo
 
-caret::postResample(pred = test$Pred, obs = test$mpg)
+caret::postResample(pred = test_augment$.fitted, obs = test_augment$mpg)
 
 # R2: Cuanto % de la variación es explicada por el modelo
 # MAE: Cuanto es el error promedio del modelo

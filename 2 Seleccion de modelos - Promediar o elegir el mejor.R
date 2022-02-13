@@ -33,7 +33,7 @@ fit6 <- lm(mpg ~ am + carb + cyl + hp + qsec, data = mtcars)
 
 models <- list(fit1, fit2, fit3, fit4, fit5, fit6)
 
-# Generación de una tabla de selección a partir de una función de MuMIn model.selc(). A diferencia de dredge(), model.sel() genera la misma tabla de seleccion de ciertos modelos seleccionados (especificados) mientras que dredge genera dicha tabla con una selección de modelos automatizada con todas las combinaciones de variables posibles.
+# Generación de una tabla de selección a partir de una función de MuMIn model.selc(). A diferencia de dredge(), model.sel() genera la misma tabla de seleccion de ciertos modelos seleccionados (especificados) mientras que dredge genera dicha tabla con una selección de modelos automatizada con todas las combinaciones de variables posibles de acuerdo a un modelo original.
 
 Select <- MuMIn::model.sel(models)
 
