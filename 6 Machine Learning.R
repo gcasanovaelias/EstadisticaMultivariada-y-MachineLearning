@@ -238,6 +238,8 @@ Model %>% varImp() %>% plot()
 
 # La temperatura del mes más frío es la variable más importante para determinar la presencia o ausencia del guanaco.
 
+# A diferencia de los otros modelos que hemos visto en el curso hasta ahora, los algoritmos de ML no toman en cuenta la MULTICOLINEARIDAD que pueda existir en las variables explicativas al momento del entrenamiento.
+
 # MAPAS
 # El modelo obtenido puede ser aplicado a mapas ya que estos cuentan con las variables explicativas evaluadas. Para esto se emplea la función predict() del paquete raster la cual presenta argumentos distintos a los que se encuentran en stats::predict().
 
@@ -360,3 +362,62 @@ lattice::bwplot(x = Difs, metric = "Rsquared")
 }
 
 # Podemos observar que mientras que el algoritmo de rpart entregaba como resultado 3 posibles valores de ocupancia (0.012, 0.043 y 0.9) los algoritmos de gbm y rf presentan un análisis de regresión mucho más detallado.
+
+
+
+# Regresión GLM binomial --------------------------------------------------
+
+
+
+attach(sp2)
+
+# Entrenamiento de modelo base
+
+FitGlob <- glm(
+  formula = presence ~ ., 
+  family = binomial,
+  data = sp2
+)
+
+# Prohibir ciertas combinaciones
+
+smat <- sp2[ ,-1] %>% cor() %>% abs() >= 0.7
+smat[!lower.tri(smat)] <- NA
+
+K <- nrow(sp2)/10 %>% floor()
+
+# Selección de modelos
+
+options(na.action = "na.fail")
+
+Selected <- dredge(
+  global.model = FitGlob,
+  subset = smat,
+  m.lim = c(0, K)
+)
+
+# Mejor modelo
+
+best <- MuMIn::get.models(
+  object = Selected,
+  subset = delta<=2
+)[[1]]
+
+tidy(best)
+glance(best)
+augment(best)
+
+# Mapa
+
+MapGLM <- raster::predict(
+  object = SA,
+  model = best,
+  # IMPORTANTE: el tipo de predicción obtenida
+  type = "response"
+)
+
+# El argumento type = "response" indica que la predicción sea con el valor de y transformado según la ecuación enlace (link). Esto es sumamente relevante para los glm y los nls donde la predicción se hace en base a una variable y transformada a algún comportamiento (log, exponencial, potencial, inverso, logit, etc). El argumento por default calcula las predicciones en base a la escala de los predictores lineales (y transformada).
+
+plot(MapGLM)
+
+
