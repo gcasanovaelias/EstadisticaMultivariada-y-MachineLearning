@@ -43,7 +43,9 @@ p + geom_line(data = df, aes(y = Pred1, color = Diet))
 
 # De igual modo, este modelo tambien presenta una estimación del parámetro de pendiente para la variable tiempo por lo que en este modelamiento vamos a poder ingresar el tipo de dieta y el tiempo que ha trasncurrido para estimar el peso de los pollos. El valor de 8.75 se traduce a que por cada día que pase los pollos aumentarán de peso en 8.75 gramos en promedio lo cual es aplicable por igual a TODAS LAS DIETAS. De este modo, de la manera en la que está planteado la regresión, las dietas presentan diferencias en las medias estimadas (valores iniciales en el tiempo 0) pero tienen la misma tasa de incremento con respecto al tiempo. Lo que nosotros queremos (para la pregunta de investigación planteada) es un mismo intercepto pero distintas pendientes según la dieta.
 
-# ¿Cómo se soluciona esto? Mediante interacciones. Se plantea que las variables explicativas del modelo van a ser el tiempo y la interacción entre el tiempo y la dieta. De esta manera, el modelo plantea que el tiempo va a tener un efecto en el peso pero que tambien el efecto que este tenga va a variar para cada dieta.
+# Al incluirse como variable, la dieta provoca que el peso promedio inicial sea diferente para las dietas, lo cual es erróneo.
+
+# ¿Cómo se soluciona esto? Mediante interacciones. Se plantea que las variables explicativas del modelo van a ser el tiempo y la interacción entre el tiempo y la dieta. De esta manera, el modelo plantea que el tiempo va a tener un efecto en el peso pero que tambien el efecto que este tenga va a variar para cada dieta. De esta manera, la dieta no se incluye como una variable por sí misma en el modelo sino que está supeditada al tiempo como interacción (provoca un efecto distinto en una variable explicativa) por lo que no habrá una distinción en el peso inicial promedio para cada dieta (intercepto no cambia porque no se incluyen estos modificadores).
 
 fit2 <- lm(formula = weight ~ Time + Time:Diet)
 
@@ -61,6 +63,8 @@ fit3 <- lm(formula = weight ~ Time + Diet + Time:Diet)
 df$Pred3 <- fit3 %>% predict(newdata = df)
 
 p + geom_line(data = df, aes(y = Pred3, color = Diet))
+
+# Ahora cada una de las dietas se considera como una variable por separado, es decir, que el valor promedio inicial de cada una será incorporado al modelo. En el casd anterior la dieta solamente era incluida para diferenciar el efecto del tiempo, al no incluirse como variable por sí misma el valor inicial de peso era el mismo para todos los pollos, independiente de la dieta.
 
 # De esta manera, cada dieta va a tener un intercepto y una pendiente distinta. Pero, al observar las estimaciones de los parámetros nos damos cuenta de que los modificadores del intercepto para cada dieta no presentan significancia lo que estaría apuntando a la idea de que diferenciar interceptos por dieta no estaría aportando al modelo. Del mismo modo, al comparar el AIC entre estos dos modelos nos damos cuenta de que el modelo 3 (distintos interceptos y pendientes) presenta un AIC mayor que el modelo 2 (distintas pendientes pero igual interceptos) por lo que este último es el modelo más passimonioso. Esto significa que el agregar estos estimados de interceptos distintos no aporta un mejor ajuste más en lo que aporta en complejidad.
 
@@ -108,11 +112,11 @@ ggplot(data = Test, aes(x = .fitted, y = .resid)) +
 
 hist(weight)
 
-# Cuando nosotros escogemos una familia (distribución) la variable respuesta Y es transformada mediante el link. 
+# Cuando nosotros escogemos una familia (distribución) la variable respuesta Y es transformada mediante una función enlace (link). 
 
 ggplot(data = ChickWeight, aes(x = weight, y = 1/weight)) + geom_point(color = "red")
 
-# En el caso de la familia gamma el link es el inverso de manera que ya no estaremos prediciendo el valor de Y sino el de 1/Y. Esta transformación genera modificaciones a los datos, al aplicar el inverso aquellos pesos altos se transformarán a bajos y viceversa. Junto con esto, se puede apreciar de que se generan 2 asíntotas, cada una en un eke cartesiano.
+# En el caso de la familia gamma la función enlace (link) es el inverso de manera que ya no estaremos prediciendo el valor de Y sino el de 1/Y. Esta transformación genera modificaciones a los datos, al aplicar el inverso aquellos pesos altos se transformarán a bajos y viceversa. Junto con esto, se puede apreciar de que se generan 2 asíntotas, cada una en un eke cartesiano.
 
 # GLM con familia Gamma
 
