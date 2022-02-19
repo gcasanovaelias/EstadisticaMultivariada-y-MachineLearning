@@ -69,6 +69,8 @@ Class <- caret::train(
   trControl = fitControl
 )
 
+# En este caso, el crossvalidation es empleado para la base de datos de entrenamiento, es decir, la subdivisión de k-fold repetidas n-veces ocurre dentro de este set de datos subseteados y no en el total.
+
 # En general, en los modelos de ML no se realiza una selección de variables sino que se le deja esa tarea al mismo algoritmo.
 
 Class$resample
@@ -80,7 +82,9 @@ caret::postResample(
   obs = Train$Species
 )
 
-# EVALUACIÓN BASE DE DATOS EXTERNA
+# Una vez que ya tenemos el modelo podemos evaluarlo con una base de datos externa, es decir, datos nuevos con los que el modelo nunca ha sido entrenado en ninguna de los modelos evaluados en el crossvalidation.
+
+# EVALUACIÓN BASE DE DATOS EXTERNA 
 
 caret::postResample(
   pred = predict(object = Class, newdata = Test),
@@ -175,6 +179,8 @@ base::infoRDS("SA.rds") # Lectura del archivo RDS
 
 # CREACIÓN DE LAS BASES DE DATOS
 
+# El n-repeated k-fold crossvalidation puede tener una subvariante denominado como "Holdout method". Previo a la implementación de la técnica podemos subsetear la base de datos totales en lo que serían bases de datos interna (entrenamiento) y externa (testeo). Esta división provoca que el modelo que se somete al CV sea en base únicamente a la base de datos de entrenamiento dejando intacta una porción de los datos. Lo anterior provoca que podamos evaluar el poder predictivo del modelo final en base a una base de datos totalmente nueva (externa) que el modelo nunca ha visto. Como se ha mencionado anteriormente, el ML está enfocado en la capacidad predictiva (y no explicativa) por lo que esta variación del CV permitiría evaluar de mejor manera esta capacidad.
+
 set.seed(2)
 
 Index1 <- caret::createDataPartition(
@@ -196,6 +202,7 @@ fitControl <- caret::trainControl(
 
 Model1 <- caret::train(
   presence ~ .,
+  # Aplicado únicamente al set de entrenamiento (distinto de la clase anterior)
   data = Train1,
   method = "rpart",
   trControl = fitControl

@@ -1,7 +1,7 @@
 # Apuntes -----------------------------------------------------------------
 
 
-# Existen ciertas ocasiones en las que los distintos critesrios de información (AICc, AIC y BIC) no pueden ser empleados como base para la selección de modelos.
+# Existen ciertas ocasiones en las que los distintos criterios de información (AICc, AIC y BIC) no pueden ser empleados como base para la selección de modelos.
 
 # (1) No se pueden calcular. Los IC contienen el LogLikelihood en sus ecuaciones el cual no siempre está definido para los modelos ó el programa no puede determinarlo fácilmente.
 
@@ -66,13 +66,20 @@ models <- list(fit1, fit2, fit3, fit4, fit5, fit6)
 
 SelectedMods <- MuMIn::model.sel(object = models)
 
+# AKAIKE WEIGHTS
 
-# I. Selección por n-repeated k-fold crossvalidation (para un único modelo) usando el paquete caret
+models %>% 
+  purrr::map_dbl(.f = ~ MuMIn::AICc(.x)) %>% 
+  # Akaike weights (Normalized model likelihoods)
+  MuMIn::Weights()
+
+# I. N-REPEATED K-FOLD CROSSVALIDATION. PARA 1 MODELO...
+
+# El crossvalidation emplea un uso de datos de manera aleatoria
 
 set.seed(2020)
 
 ctrl <- caret::trainControl(
-  # Método de repeated crossvalidation
   method = "repeatedcv", 
   # k-folds
   number = 5,
@@ -81,11 +88,16 @@ ctrl <- caret::trainControl(
 
 DF <- caret::train(
   mpg ~ hp, 
+  # Aplicado a todo el set de datos
   data = mtcars,
   method = "lm",
   trControl = ctrl)
 
-# Podemos extraer las métricas obtenidas para cada fold de cada repetición
+# Métricas obtenidas de cada fold de cada repetición
+
+DF$results
+
+DF$control
 
 DF$resample
 
@@ -97,11 +109,13 @@ DF$resample %>%
   select(Rsquared, Resample) %>% 
   summarise_if(is.numeric, .funs = c(Mean = mean, SD = sd))
 
-# ¿Qué ocurre con la construcción del modelo en el crossvalidation? Se construye un modelo basado en todos los datos presentes en el crossvalidation
+# ¿Qué ocurre con la construcción del modelo en el crossvalidation? Se construye un modelo basado en todos los datos presentes 
 
-DF$finalModel %>% tidy()
+DF$finalModel %>% glance()
 
-# II. ¿Cómo trabajar con una serie de modelos distintos?
+DF$finalModel %>% AICc()
+
+# II. ...Ó PARA N MODELOS
 
 # Creación de fórmulas
 
@@ -124,21 +138,22 @@ Tests <- forms %>%
     as.formula(.x),
     data = mtcars,
     method = "lm",
-    trControl = ctrl
+    trControl = ctrl,
+    metric = "MAE"
   )) %>%
   map(.f =  ~ as_tibble(.x$resample)) %>%
-  map(.f =  ~ select(.x, 
+  map(.f =  ~ select(.x,
                      # Escoger R2
                      Rsquared)) %>%
   map(.f =  ~ summarise_all(.x,
-                       .funs = c(Mean = mean, SD = sd),
-                       na.rm = T)) %>%
-  map2(.y = forms, # Misma cantidad de objetos que .x (6)
-       .f = ~ mutate(.x, 
+                            .funs = c(Mean = mean, SD = sd),
+                            na.rm = T)) %>%
+  map2(.y = forms,
+       .f = ~ mutate(.x,
                      # Crear una columna con las fórmulas
-                     model = .y)) %>% 
-  reduce(.f = bind_rows) %>% 
-  mutate(K = 2:7) %>% 
+                     model = .y)) %>%
+  reduce(.f = bind_rows) %>%
+  mutate(K = 2:7) %>%
   arrange(desc(Mean))
 
 # Se destacan tres cosas importantes con respecto al resultado del crossvalidation: (1) siempre se escoge el primer y mejor modelo, no se realizan promedios, (2) a pesar de que el valor promediado puede variar levemente se observa que el orden obtenido en los distintos modelos es el mismo, independiente de los distintos set seeds que se realizan, y (3) que este resultado concuerda con la selección de modelos múltiples realizada anteriormente por lo que se concluye que el crossvalidation tambien permite seleccionar modelos con la mayor parsimonía.
