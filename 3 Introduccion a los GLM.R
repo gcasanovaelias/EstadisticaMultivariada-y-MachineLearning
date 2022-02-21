@@ -34,10 +34,24 @@ p + geom_point(aes(color = Diet)) +
 
 fit1 <- lm(formula = weight ~ Time + Diet)
 
-df <- ChickWeight
-df$Pred1 <- fit1 %>% predict(newdata = df)
+fit1_augment <- augment(fit1)
 
-p + geom_line(data = df, aes(y = Pred1, color = Diet))
+# Grafico lm 1 (versión original con geom_line)
+
+p + geom_line(data = fit1_augment, aes(y = .fitted, color = Diet))
+
+# Grafico lm 1 (versión nueva con stat smooth)
+{
+  ggplot(data = fit1_augment, aes(x = Time, y = weight)) +
+    geom_point(aes(color = Diet)) +
+    stat_smooth(
+      method = "lm",
+      formula = y ~ x,
+      se = F,
+      mapping = aes(y = .fitted, color = Diet),
+      method.args = list()
+    )
+}
 
 # En un modelo de clasificación estamos estimando las medias para cada tratamiento lo que, en este caso, se traduce a estimar el peso de los pollos según cada una de las dietas (análogo a realizar un ANOVA). Para esto se emplea el valor del intercepto general b0 y de los modificadores de cada una de las dietas. Para la dieta 1, la cual es el nivel de la variable que ha sido designada como base, el estimado del modificador es igual a 0 mientras que el resto de los modificadores para el resto de las dietas corresponden a una comparación del peso promedio estimado para cada una de estas. Cada uno de estos estimadores se suma a la media general estimada (intercepto) por lo que las medias para cada una de las dietas sería; 10.9 + 0 = 10.9 para la dieta 1, 10.9 + 16.2 = 28.1 para la dieta 2, 10.9 + 36.5 = 47.4 para la dieta 3, y 10.9 + 30.2 = 41.1 para la dieta 4. 
 
@@ -49,10 +63,24 @@ p + geom_line(data = df, aes(y = Pred1, color = Diet))
 
 fit2 <- lm(formula = weight ~ Time + Time:Diet)
 
-df$Pred2 <- fit2 %>% predict(newdata = df)
+fit2_augment <- augment(fit2)
 
-p + geom_line(data = df, aes(y = Pred2, color = Diet))
+# Gráfico lm 2 (versión original)
 
+p + geom_line(data = fit2_augment, aes(y = .fitted, color = Diet))
+
+# Gráfico lm 2 (versión nueva con stat smooth)
+{
+  ggplot(data = fit2_augment, aes(x = Time, y = weight)) +
+    geom_point(aes(color = Diet)) +
+    stat_smooth(
+      method = "lm",
+      formula = y ~ x,
+      se = F,
+      mapping = aes(y = .fitted, color = Diet),
+      method.args = list()
+    )
+}   
 # Observando los parámetros, el modelo presenta un único intercepto para todas las dietas, es decir, el valor estimado del peso para el tiempo 0 es el mismo para todas las dietas. Aquí la pendiente entre el weight y Time es la que varía y esto es proudcto de Time:Diet. Para la dieta 1 el incremento es igual a la pendiente de Time (7.05 + 0 = 7.05), para la dieta 2 (7.05 + 1.61 = 8.66), dieta 3 (7.05 + 3.74 = 10.79) y dieta 4 (7.05 + 2.86 = 9.91).
 
 # Podemos observar que el criterio de información de Akaike indica que este último modelo es más parsimonioso que el anterior. Independiente de esto, podemos mejorar aún más el modelo indicandole cambios en la pendiente así como tambien en el intercepto.
@@ -60,15 +88,31 @@ p + geom_line(data = df, aes(y = Pred2, color = Diet))
 # fit3 <- lm(formula = weight ~ Time * Diet)
 fit3 <- lm(formula = weight ~ Time + Diet + Time:Diet)
 
-df$Pred3 <- fit3 %>% predict(newdata = df)
+fit3_augment <- augment(fit3)
 
-p + geom_line(data = df, aes(y = Pred3, color = Diet))
+# Gráfico lm 3 (versión original con geom_line)
+
+p + geom_line(data = fit3_augment, aes(y = .fitted, color = Diet))
+
+# Grafico lm3 (versión nueva con stat_smooth)
+{
+  ggplot(data = fit3_augment, aes(x = Time, y = weight)) +
+    geom_point(aes(color = Diet)) +
+    stat_smooth(
+      method = "lm",
+      formula = y ~ x,
+      se = F,
+      mapping = aes(y = .fitted, color = Diet),
+      method.args = list()
+    )
+}
 
 # Ahora cada una de las dietas se considera como una variable por separado, es decir, que el valor promedio inicial de cada una será incorporado al modelo. En el casd anterior la dieta solamente era incluida para diferenciar el efecto del tiempo, al no incluirse como variable por sí misma el valor inicial de peso era el mismo para todos los pollos, independiente de la dieta.
 
 # De esta manera, cada dieta va a tener un intercepto y una pendiente distinta. Pero, al observar las estimaciones de los parámetros nos damos cuenta de que los modificadores del intercepto para cada dieta no presentan significancia lo que estaría apuntando a la idea de que diferenciar interceptos por dieta no estaría aportando al modelo. Del mismo modo, al comparar el AIC entre estos dos modelos nos damos cuenta de que el modelo 3 (distintos interceptos y pendientes) presenta un AIC mayor que el modelo 2 (distintas pendientes pero igual interceptos) por lo que este último es el modelo más passimonioso. Esto significa que el agregar estos estimados de interceptos distintos no aporta un mejor ajuste más en lo que aporta en complejidad.
 
 # En cuanto a los parámetros. El intercepto para la dieta 1 es (30.93 + 0 = 30.93), dieta 2 (30.93 - 2.30 = 28.63), dieta 3 (30.93 - 12.68 = 18.25) y dieta 4 (30.93 - 0.14 = 30.79). Para la pendiente, la dieta 1 (6.84 + 0 = 6.84), para la dieta 2 (6.84 + 1.76 = 8.60), dieta 3 (6.84 + 4.58 = 11.42) y dieta 4 (6.84 + 2.87 = 9.71).
+
 
 
 # Seleccion de modelos ----------------------------------------------------
@@ -114,27 +158,46 @@ hist(weight)
 
 # Cuando nosotros escogemos una familia (distribución) la variable respuesta Y es transformada mediante una función enlace (link). 
 
-ggplot(data = ChickWeight, aes(x = weight, y = 1/weight)) + geom_point(color = "red")
+ggplot(data = ChickWeight, aes(x = weight, y = 1/weight)) + 
+  geom_point(color = "red")
 
 # En el caso de la familia gamma la función enlace (link) es el inverso de manera que ya no estaremos prediciendo el valor de Y sino el de 1/Y. Esta transformación genera modificaciones a los datos, al aplicar el inverso aquellos pesos altos se transformarán a bajos y viceversa. Junto con esto, se puede apreciar de que se generan 2 asíntotas, cada una en un eke cartesiano.
 
-# GLM con familia Gamma
+# GLM CON FAMILIA GAMMA
 
 fit2g <- glm(formula = weight ~ Time + Time:Diet, family = Gamma)
 
 #Como se puede apreciar, el modelo ahora incorpora una curvatura en vez de ser una línea recta lo que es producto de cambiar la distribución de la variable respuesta. De esta manera, al aplicar la familia Gamma se obtiene una respuesta similar a una exponencial. Esta respueta tiene sentido desde el punto de vista biologico ya que los infantes no presentan un crecimiento rectilineal sino que van duplicando su tasa de crecimiento conforme avanza el tiempo dentro de un periodo.
 
-df$Pred2g <- 1/predict(object = fit2g, newdata = df)
+# df$Pred2g <- 1/predict(object = fit2g, newdata = df)
+# df$Pred2g <- predict(object = fit2g, newdata = df, type = "response")
+
+fit2g_augment <- augment(x = fit2g, type.predict = "response")
 
 # Los valores predichos del modelo son el inverso del weight.
 
-p + geom_line(data = df, aes(y = Pred2g, color = Diet))
+# Gráfico 1 glm (Gamma) (versión original c/ geom_line)
 
-# GLM con familia poisson
+p + geom_line(data = fit2g_augment, aes(y = .fitted, color = Diet))
+
+# Gráfico 1 glm (Gamma) (nueva versión c/ stat_smooth)
+{
+  ggplot(data = fit2g_augment, aes(x = Time, y = weight)) +
+    geom_point(aes(color = Diet)) +
+    stat_smooth(
+      method = "glm",
+      formula = y ~ x,
+      se = F,
+      mapping = aes(y = .fitted, color = Diet),
+      method.args = list(family = Gamma)
+    )
+}  
+# GLM CON FAMILIA POISSON
 
 # En la distribución de poisson el link que conecta la relación lineal y la variable respuesta es un logaritmo por lo que los valores predichos del modelo corresponden a log(Y). Producto de este log es que poisson sólo debe ser empleado cuando la variable Y es cuentitativa discreta y no contempla el 0. 
 
-ggplot(data = ChickWeight, aes(x = weight, y = log(weight))) + geom_point(color = "red")
+ggplot(data = ChickWeight, aes(x = weight, y = log(weight))) + 
+  geom_point(color = "red")
 
 # De esta manera, cuando aplicamos una familia poisson para explicar la variable respuesta es que debemos aplicar una exponencial para despejar Y.
 
@@ -144,21 +207,41 @@ fit2p <- glm(formula = weight ~ Time + Time:Diet, family = poisson)
 
 # Al momento de interpretar los resultados debemos hacerlo teniendo en cuenta el coportamiento de la variable dependiente original (weight) y no la transformada en un principio (log(weight)). Para eso podemos basarnos en un gráfico y basar el análisis en el comportamiento exponencial que se puede apreciar.
 
-df$Pred2p <- predict(object = fit2p, newdata = df) %>% exp()
+# df$Pred2p <- predict(object = fit2p, newdata = df) %>% exp()
+# df$Pred2p <- predict(object = fit2p, newdata = df, type = "response")
 
-p + geom_line(data = df, aes(y = Pred2p, color = Diet))
+fit2p_augment <- augment(fit2p, type.predict = "response")
+
+# Gráfico 2 glm (Poisson) (versión original con geom_line)
+
+p + geom_line(data = fit2p_augment, aes(y = .fitted, color = Diet))
+
+# Gráfico 2 glm (Poisson) (nueva versión c/ stat_smooth)
+
+{
+  ggplot(data = fit2p_augment, aes(x = Time, y = weight)) +
+    geom_point(aes(color = Diet)) +
+    stat_smooth(
+      method = "glm",
+      formula = y ~ x,
+      se = F,
+      mapping = aes(y = .fitted, color = Diet),
+      method.args = list(family = poisson)
+    )
+  
+}
 
 # Comparación de modelos lm y glm. Cuando se realiza una transformación de la variable Y ya no podemos realizar una comparación de criterios de información como AICc o BIC.
 
 Select <- Select %>% dplyr::full_join(MuMIn::model.sel(list(fit2g, fit2p)))
 
 
-# GLM con familia binomial
+# GLM CON FAMILIA BINOMIAL
 
 train <- read_csv("https://raw.githubusercontent.com/derek-corcoran-barrios/derek-corcoran-barrios.github.io/master/CursoMultiPres/Capitulo_3/train.csv") %>% 
   filter(Embarked == "S")
 
-str(train)
+dplyr::glimpse(train)
 
 # Modelaremos la sobrevivencia de los pasajeros por lo que la variable respuesta presentará una distribución binomial. Esta distribución tiene un link igual a logit = log((p)/(1-p)), el cual genera una línea en forma de S. Dada esta transformación, logit sólo puede ser empleado a valores que se encuentren entre 0 y 1, sin contarlos.
 
@@ -170,18 +253,20 @@ attach(train)
 
 fitBin2 <- glm(formula = Survived ~ Fare * Sex, family = binomial)
 
+train_augment <- augment(fitBin2, type.predict = "response")
+
 # El modelo binomial produce que en los valores extremos de Fare se generen convergencias hacia los valores de y = 0 e y = 1.
 
-
-
-
-
-
-
-
-
-
-
-
-
+{
+  ggplot(data = train_augment, aes(x = Fare, y = Survived)) +
+    geom_point(aes(color = Sex)) +
+    stat_smooth(
+      method = "glm",
+      formula = y ~ x,
+      se = F,
+      mapping = aes(y = .fitted, color = Sex),
+      method.args = list(family = binomial)
+    )
+  
+}
 

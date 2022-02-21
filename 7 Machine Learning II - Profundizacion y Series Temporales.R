@@ -143,6 +143,8 @@ Train <- Contaminacion %>% dplyr::filter(!(lubridate::year(Fecha)) %in% c(2016, 
 # Base de datos de testeo (HORIZON): 2016 y 2017
 Test <- Contaminacion %>% dplyr::filter(lubridate::year(Fecha) %in% c(2016, 2017))
 
+# IMPORTANTE: Debemos fijarnos de que los datos esten ordenados de acuerdo a la variable fecha antes de realizar el entrenamiento de la serie de tiempo. Esta acción la podemos realizar mediante la función arrange() del paquete dplyr (tidyverse).
+
 # De esta manera, vamos a construir el modelo de series de tiempo con 12 años de entrenamiento y lo testearemos en 2.
 
 # La terminología empleada en las series de tiempo es distinta a las demás ramas de ML. La base de datos de entrenamiento se denomina ventana inicial ("InitialWindow") mientras que la de testeo se llama horizonte ("horizon").
@@ -166,6 +168,8 @@ Graph_Slice <- function(Slices = Slices){
     facet_wrap(~ rep) +
     theme_bw()
 }
+
+# ¿Qué significan los 365? Son unidades, no hacen referencia exlusiva a los días sino al espaciamiento que hay entre las observaciones que hacen referencia a la misma fecha. Por ejemplo, en los datos se observa el registro para todos los días del año s/ agrupaciones extras por lo que hace sentido que el número apropiado sea de 365. En otros casos donde sólo hay una porción de los días del año en la base de datos esto no se cumple. Para designar las unidades apropiadas en estos casos debemos tener en cuenta la cantidad de días que existe entre las distintas observaciones para las mismas fechas. Esto tambien se vuelve sumamente relevante cuando tenemos observaciones para los mismos días repartidas en lo que serían distintas clases de una variable categórica donde la frecuencia de las fechas se verá afectada.
 
 Slices <- caret::createTimeSlices(
   y = Train$MP25,

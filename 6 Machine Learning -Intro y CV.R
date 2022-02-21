@@ -371,9 +371,7 @@ lattice::bwplot(x = Difs, metric = "Rsquared")
 # Podemos observar que mientras que el algoritmo de rpart entregaba como resultado 3 posibles valores de ocupancia (0.012, 0.043 y 0.9) los algoritmos de gbm y rf presentan un análisis de regresión mucho más detallado.
 
 
-
 # Regresión GLM binomial --------------------------------------------------
-
 
 
 attach(sp2)
