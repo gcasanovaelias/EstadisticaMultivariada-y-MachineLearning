@@ -6,6 +6,8 @@ library(broom)
 library(broom.mixed)
 library(caret)
 library(raster)
+library(doParallel)
+library(parallel)
 
 
 # Apuntes -----------------------------------------------------------------
@@ -17,6 +19,8 @@ library(raster)
 # Como se había mencionado anteriormente, los algoritmos de ML son más adecuados cuando el enfoque del estudio es predictivo y no explicativo (en general su desempeño es bastante malo al momento de realizar un estudio explicativo).
 
 # Cuando trabajamos con ML debemos tener en consideración la técnica de crossvalidation (n-repeated k-fold crossvalidation) la cual nos permite crear modelos y métricas de ajuste mucho más robustas en base al promedio de k subseteos y modelaciones repetidas n veces en base a una base de datos.
+
+# ¿Cuales son los mejores algoritmos? ¿Cual emplear? Depende del volumen de datos. En general, los algoritmos de Random Forest, GBM y SVM son los que presentan mejor rendimiento en lo que sería el Machine Learning tradicional con un volumen de datos de alrededor de 1000 a 10000. Conforme esta cantidad va aumentando es que se debe considerar aplicar otros algoritmos relacionados con el Deep Learning tales como las redes neuronales (Neural Networks).
 
 
 # ML Classification -------------------------------------------------------
@@ -272,11 +276,33 @@ Model2 <- caret::train(
   trControl = fitControl
 )
 
-plot(Model2)
-
-# A diferencia del algoritmo de rpart, que sólo presentaba el parámetro de complejidad (CP), gbm emplea 3 parámetros: (1) Boosting iterations (n° de modelos), (2) Max Tree Depth (n° de divisiones) y (3) el n° mínimo de hojas presentes en cada nodo.
 # Este algoritmo gbm no puede ser representado gráficamente como un único arbol de decisión ya que de por sí está compuesto por muchos de estos árboles de decisión.
 
+# Influencia de las variables
+
+summary(Model2)
+
+# A diferencia del algoritmo de rpart, que sólo presentaba el parámetro de complejidad (CP), gbm muestra 2 parámetros: (1) Boosting iterations ó n.trees (n° de modelos o iteraciones) y (2) Max Tree Depth ó interaction.depth (n° de divisiones).
+
+plot(Model2)
+
+# Del gráfico se puede concluir que con 150 iteraciones de boosting y una profundidad máxima de a´rbol igual a 3 se minimiza el RMSE del modelo, pero estos no son los único parámetros que influyen en la modelación...
+
+# ...Expandiendo el conocimiento de los parámetros con otros GRID:
+# Por default sólo observamos 2 de los 4 parámetros que se pueden modificar en el gbm modelado (https://topepo.github.io/caret/available-models.html). Podemos explorar de mejor manera cuales son los valores de estos parámetros que maximizan o minimizan la métrica deseada a través de la función expand.grid() la cual permite obtener todas las combinaciones posibles de parámetros.
+
+gbmGrid <- base::expand.grid(
+  # Porfundidad de interacción
+  interaction.depth = c(1,5,9),
+  # n° arboles = n° iteraciones (cada arbol = 1 iteracion)
+  n.trees = (1:30)*50,
+  # rapidez de aprendizaje del modelo
+  shrinkage = c(0.1, 0.01),
+  # n° mínimo de obs por nudo
+  n.minobsinnode = c(10,30)
+)
+
+# Al indicar estas nuevas combinaciones de parámetros le estamos entregando al modelo otra fuente de variación en el entrenamiento de los datos. Cada una de las iteraciones realizadas en el CV debe realizarse para cada combinación indicada de los parametros. Por default al realizar gbm caret provoca una variación de 9 combinación de parámetros para cada CV. Si aplicamos la grilla expandida anterior el factor multiplicativo es 360 y no 9.
 
 # Random Forest (default)
 Model3 <- caret::train(
@@ -426,3 +452,38 @@ MapGLM <- raster::predict(
 plot(MapGLM)
 
 
+# Paralelización ----------------------------------------------------------
+# (sección de la 10ma clase del curso)
+
+# La gran demanda de computo y tiempo de realizar modelos complejos y en grandes cantidades hacen necesario el recurrir a la paralelización. La mayoría de los computadores que se encuentran disponibles en el mercado presentan más de 1 núcleo (core). En este contexto de programación esto significa que los computadores con múltiples cores pueden realizar los computos y tareas de manera paralela y no secuencial para despues unir los resultados obtenidos por cada uno de los procesamientos.
+
+# ¿Cuantos cores tengo en el computador?
+
+parallel::detectCores()
+
+# Creación de una serie de copias de R corriendo en paralelo y comunicandose entre ellas
+
+parallel::makePSOCKcluster(8) %>% 
+  # Registro del trabajo en paralelo
+  registerDoParallel()
+  
+# De esta manera, cualquier código que corramos proveniente de caret será paralelizado
+
+Model2_exp <- caret::train(
+  presence ~ .,
+  data = Train1,
+  method = "gbm",
+  trControl = fitControl,
+  # 360 combinaciones de los valores de parámetros en vez de 9 (default)
+  tuneGrid = gbmGrid
+)
+
+plot(Model2_exp)
+
+# Podemos observar un gráfico mucho más completo acerca del comportamiento del modelo en función de los distintos parámetros que componen un gbm. De esta manera, la minimización del RMSE ocurre cuando el n° de iteraciones (arboles) es igual a 1500, con una profundidad de modelaje de 9, una tasa de aprendizaje (shrinkage) de 0.01 y un n° mínimo de observaciones por nudo igual a 10.
+
+# Una vez finalizada la tarea es necesario detener el trabajo en paralelo ya que tendremos múltiples ventanas de R realizando tareas lo cual consume una importante porción de la RAM.
+
+makePSOCKcluster(8) %>% 
+  # Detener el trabajo en paralelo
+  parallel::stopCluster()
