@@ -5,6 +5,9 @@ library(caret)
 library(lubridate)
 library(broom)
 library(broom.mixed)
+library(furrr)
+library(doParallel)
+library(tictoc)
 
 
 # Data --------------------------------------------------------------------
@@ -97,7 +100,7 @@ pred <- predict(object = fitTime,
 Pred <- tibble(ID = seq_along(pred),
                Activos_5_por_100.000 = pred)
 
-write_csv(Pred, "Prediccion.csv")
+write_csv(x = Pred, file = "Prediccion.csv")
 
 
 # Functional programming --------------------------------------------------
@@ -127,16 +130,23 @@ write_csv(Pred, "Prediccion.csv")
     relocate(data, .after = horizon)
 }
 
+# Seting up parallel processing
+
+future::plan(strategy = multisession, workers = 4)
+
+parallel::makePSOCKcluster(4) %>% doParallel::registerDoParallel()
+
 # Nesting modelling
 
 options(na.action = "na.fail")
 
 set.seed(1)
 
+tic()
 {
   Train_model <- Train_nest %>%
     mutate(
-      timeSlices = pmap(
+      timeSlices = future_pmap(
         .l = list(fixedWindow, initialWindow, horizon),
         .f = ~ createTimeSlices(
           y = data[[1]]$Activos_5_por_100.000,
@@ -144,9 +154,10 @@ set.seed(1)
           initialWindow = initialWindow,
           fixedWindow = fixedWindow,
           skip = 346
-        )
+        ),
+        .options = furrr_options(seed = T)
       ),
-      fitControl = pmap(
+      fitControl = future_pmap(
         .l = list(fixedWindow, initialWindow, horizon),
         .f = ~ trainControl(
           method = "timeslice",
@@ -154,9 +165,10 @@ set.seed(1)
           initialWindow = initialWindow,
           fixedWindow = fixedWindow,
           skip = 346
-        )
+        ),
+        .options = furrr_options(seed = T)
       ),
-      fitTime = map(
+      fitTime = future_map(
         .x = fitControl,
         .f = ~ train(
           form = Activos_5_por_100.000 ~ .,
@@ -165,10 +177,16 @@ set.seed(1)
           trControl = .x,
           metric = "RMSE",
           verbose = T
-        )
+        ),
+        .options = furrr_options(seed = T)
       )
     )
 }
+toc()
+
+future::plan(strategy = sequential)
+
+parallel::makePSOCKcluster(4) %>% parallel::stopCluster()
 
 # Predictions
 
@@ -182,5 +200,3 @@ Test_pred <- Train_model %>%
   )) %>% 
   select(-c(data, timeSlices, fitControl,fitTime)) %>% 
   unnest(cols = Pred)
-
-

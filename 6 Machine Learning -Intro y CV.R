@@ -465,7 +465,7 @@ parallel::detectCores()
 
 parallel::makePSOCKcluster(8) %>% 
   # Registro del trabajo en paralelo
-  registerDoParallel()
+  doParallel::registerDoParallel()
   
 # De esta manera, cualquier código que corramos proveniente de caret será paralelizado
 
@@ -484,6 +484,7 @@ plot(Model2_exp)
 
 # Una vez finalizada la tarea es necesario detener el trabajo en paralelo ya que tendremos múltiples ventanas de R realizando tareas lo cual consume una importante porción de la RAM.
 
-makePSOCKcluster(8) %>% 
+# makeCluster() tambien funciona
+parallel::makePSOCKcluster(8) %>% 
   # Detener el trabajo en paralelo
   parallel::stopCluster()
