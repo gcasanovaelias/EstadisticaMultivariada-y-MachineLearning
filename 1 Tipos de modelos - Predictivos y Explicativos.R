@@ -51,11 +51,14 @@ test <- mtcars[-index, ]
 
 modelo <- lm(mpg ~ hp + I(hp ^ 2), data = train)
 
-broom::glance(modelo) # glance(): accepts a model object and returns a tibble with model summaries (goodness of fit measures)
+# glance(): model statistics. Accepts a model object and returns a tibble with model summaries (goodness of fit measures)
+broom::glance(modelo)
 
-broom::tidy(modelo) # tidy(): summarises information about components of a model (similar to summary())
+# tidy(): parameters statistics. Summarises information about components of a model (similar to summary())
+broom::tidy(modelo)
 
-broom::augment(modelo) # augment(): accepts a dataset and adds information about each observation
+# augment(): observation statistics. Accepts a dataset and adds information about each observation
+broom::augment(modelo)
 
 # Un R2 de 0.82 significa que el 82% de la variabilidad es debido al modelo (el 18% restante es del error) por lo que esto correspondería al poder explicativo
 

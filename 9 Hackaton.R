@@ -110,6 +110,7 @@ write_csv(x = Pred, file = "Prediccion.csv")
 {
   Train_nest <- Train_plus %>%
     nest(data = everything()) %>%
+    # duplicate rows by weight
     uncount(weights = 2) %>%
     mutate(fixedWindow = c(T, F)) %>%
     uncount(weights = 4, .id = "ID") %>%
@@ -132,7 +133,7 @@ write_csv(x = Pred, file = "Prediccion.csv")
 
 # Seting up parallel processing
 
-future::plan(strategy = multisession, workers = 4)
+future::plan(strategy = "multisession", workers = 4)
 
 parallel::makePSOCKcluster(4) %>% doParallel::registerDoParallel()
 
@@ -155,7 +156,7 @@ tic()
           fixedWindow = fixedWindow,
           skip = 346
         ),
-        .options = furrr_options(seed = T)
+        .options = furrr_options(seed = list(1:8))
       ),
       fitControl = future_pmap(
         .l = list(fixedWindow, initialWindow, horizon),
@@ -166,7 +167,7 @@ tic()
           fixedWindow = fixedWindow,
           skip = 346
         ),
-        .options = furrr_options(seed = T)
+        .options = furrr_options(seed = list(1:8))
       ),
       fitTime = future_map(
         .x = fitControl,
@@ -178,7 +179,7 @@ tic()
           metric = "RMSE",
           verbose = T
         ),
-        .options = furrr_options(seed = T)
+        .options = furrr_options(seed = list(1:8))
       )
     )
 }
